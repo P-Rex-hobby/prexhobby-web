@@ -21,6 +21,7 @@ export type OrderItem = {
   total_price: string;
   shipping_address: any;
   skuStatus?: any;
+  products?:any
 }
 export const columns: TColumn<OrderItem,unknown>[] = [
   {
@@ -110,6 +111,7 @@ export const columns: TColumn<OrderItem,unknown>[] = [
     ),
     cell: ({ row }) => {
       const skuStatus = row.original.skuStatus ||{}
+      
       return(
         <>
           <h3 className="text-red-500">Total:{row.original.line_items.length} items</h3>
@@ -122,11 +124,17 @@ export const columns: TColumn<OrderItem,unknown>[] = [
               if (skuStatus[item.sku]=='Y'){
                 className+=" bg-yellow-300"
               }
+              let url= `https://www.plamod.com/management#products?s=${item.sku}`
+              //如果sku是一个uuid
+              if(item.sku.length==36){
+                url=`https://www.universaldist.com/item/detail/${item.sku}`
+              }
               return(
                 <div key={item.sku} className={'flex items-center gap-2'}>
                   <p className={className}>
-                    <Link href={`https://www.plamod.com/management#products?s=${item.sku}`} target="_blank">{item.sku}x{item.quantity}</Link>
+                    <Link href={url} target="_blank">{item.sku}x{item.quantity}</Link>
                   </p>
+                  <p className="text-xs text-green-600">{row.original.products?.[item.sku]}</p>
                 </div>
               )
             })
