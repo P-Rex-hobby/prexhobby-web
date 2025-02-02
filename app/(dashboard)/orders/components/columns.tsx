@@ -126,7 +126,7 @@ export const columns: TColumn<OrderItem,unknown>[] = [
               }
               let url= `https://www.plamod.com/management#products?s=${item.sku}`
               //如果sku是一个uuid
-              if(item.sku.length==36){
+              if(item.sku?.length==36){
                 url=`https://www.universaldist.com/item/detail/${item.sku}`
               }
               return(
