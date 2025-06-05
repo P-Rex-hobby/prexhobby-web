@@ -7,7 +7,7 @@ import CustomCard from "@/components/biz/custom-card";
 import { Suspense, useRef, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
-export default function Subscribes() {
+function SubscribeTableWrapper() {
   const tableRef = useRef<TableRef>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -57,19 +57,25 @@ export default function Subscribes() {
   };
 
   return (
+    <DataTable<SubscribeItem, unknown>
+      ref={tableRef}
+      queryKey="subscribes"
+      columns={columns}
+      pagination={true}
+      actions={actions}
+    />
+  );
+}
+
+export default function Subscribes() {
+  return (
     <Page
       title="Subscribes"
       className="max-w-full"
     >
       <CustomCard>
-        <Suspense>
-          <DataTable<SubscribeItem, unknown>
-            ref={tableRef}
-            queryKey="subscribes"
-            columns={columns}
-            pagination={true}
-            actions={actions}
-          />
+        <Suspense fallback={<div>Loading...</div>}>
+          <SubscribeTableWrapper />
         </Suspense>
       </CustomCard>
     </Page>
