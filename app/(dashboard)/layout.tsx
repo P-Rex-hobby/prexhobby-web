@@ -82,6 +82,12 @@ const Menus = () => {
       >
         Orders
       </Link>
+      <Link
+        href="/subscribes"
+        className={pathname == "/subscribes" ? activeClassName : className}
+      >
+        Subscribes
+      </Link>
     </>
   );
 };
