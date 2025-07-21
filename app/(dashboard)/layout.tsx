@@ -88,6 +88,12 @@ const Menus = () => {
       >
         Subscribes
       </Link>
+      <Link
+        href="/csv-processor"
+        className={pathname == "/csv-processor" ? activeClassName : className}
+      >
+        CSV Processor
+      </Link>
     </>
   );
 };
