@@ -31,14 +31,28 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
         
-        // Validate required columns
+        // Validate required columns for different file formats
         if (jsonData.length > 0) {
           const firstRow = jsonData[0] as any;
-          const requiredColumns = ["Category", "SKU", "Barcode", "Name", "Ordered", "Filled", "Price", "Tariff", "Subtotal"];
+          const columns = Object.keys(firstRow);
+          
+          // Check if it's Document format (contains "Document No.")
+          const isDocumentFormat = columns.includes("Document No.");
+          
+          let requiredColumns: string[];
+          if (isDocumentFormat) {
+            // Document format columns
+            requiredColumns = ["Document No.", "Document Date", "Item No.", "Vendor Item No.", "Product", "Unit Price", "Quantity"];
+          } else {
+            // Traditional CSV format columns  
+            requiredColumns = ["Category", "SKU", "Barcode", "Name", "Ordered", "Filled", "Price", "Tariff", "Subtotal"];
+          }
+          
           const missingColumns = requiredColumns.filter(col => !(col in firstRow));
           
           if (missingColumns.length > 0) {
-            setParseError(`Missing required columns: ${missingColumns.join(", ")}`);
+            const formatType = isDocumentFormat ? "Document format" : "CSV format";
+            setParseError(`Missing required columns for ${formatType}: ${missingColumns.join(", ")}`);
             return;
           }
         }
@@ -98,14 +112,25 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
     if (files && files.length > 0) {
       const droppedFile = files[0];
       
-      // Create a mock file input event
-      const mockEvent = {
-        target: { files: [droppedFile] }
-      } as React.ChangeEvent<HTMLInputElement>;
+      // Validate file type
+      const allowedTypes = ['.csv', '.xls', '.xlsx'];
+      const fileExtension = droppedFile.name.toLowerCase().substring(droppedFile.name.lastIndexOf('.'));
       
-      handleFileChange(mockEvent);
+      if (!allowedTypes.includes(fileExtension)) {
+        setParseError("Unsupported file format, please upload .csv, .xls or .xlsx files");
+        return;
+      }
+      
+      // Validate file size
+      if (droppedFile.size > 10 * 1024 * 1024) {
+        setParseError("File size exceeds 10MB limit");
+        return;
+      }
+      
+      setFile(droppedFile);
+      parseCSVFile(droppedFile);
     }
-  }, [handleFileChange]);
+  }, [parseCSVFile]);
 
   const handleClick = () => {
     if (!disabled && fileInputRef.current) {

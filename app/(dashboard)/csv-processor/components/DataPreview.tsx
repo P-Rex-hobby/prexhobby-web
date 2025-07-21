@@ -23,22 +23,41 @@ interface DataPreviewProps {
 }
 
 export default function DataPreview({ data, onStartProcess, onUpload }: DataPreviewProps) {
+  // Detect format based on first row
+  const isDocumentFormat = useMemo(() => {
+    return data.length > 0 && 'Document No.' in data[0];
+  }, [data]);
   // Process data deduplication and summation
   const processedData = useMemo(() => {
     const barcodeMap = new Map<string, number>();
     const skuMap = new Map<string, number>();
     
+    // Use the format detection from parent component
+    const isDocumentFormatInner = data.length > 0 && 'Document No.' in data[0];
+    
     data.forEach((row) => {
-      const barcode = row.Barcode?.toString();
-      const sku = row.SKU?.toString();
-      const filled = parseInt(row.Filled) || 0;
+      let barcode: string;
+      let sku: string;
+      let quantity: number;
+      
+      if (isDocumentFormatInner) {
+        // Document format: Item No. = barcode, no SKU field, use Quantity
+        barcode = row['Item No.']?.toString();
+        sku = ''; // Document format doesn't have SKU, will be resolved by backend
+        quantity = parseInt(row.Quantity) || 0;
+      } else {
+        // Traditional CSV format
+        barcode = row.Barcode?.toString();
+        sku = row.SKU?.toString();
+        quantity = parseInt(row.Filled) || 0;
+      }
       
       if (barcode) {
-        barcodeMap.set(barcode, (barcodeMap.get(barcode) || 0) + filled);
+        barcodeMap.set(barcode, (barcodeMap.get(barcode) || 0) + quantity);
       }
       
       if (sku) {
-        skuMap.set(sku, (skuMap.get(sku) || 0) + filled);
+        skuMap.set(sku, (skuMap.get(sku) || 0) + quantity);
       }
     });
     
@@ -51,15 +70,37 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
       .filter(([_, count]) => count > 0)
       .map(([sku, count]) => ({ sku, count }));
     
-    return { barcodeData, skuData };
+    return { 
+      barcodeData, 
+      skuData,
+      isDocumentFormat: isDocumentFormatInner 
+    };
   }, [data]);
 
-  const stats = {
-    totalRows: data.length,
-    uniqueProducts: new Set(data.map(row => row.SKU)).size,
-    totalFilled: data.reduce((sum, row) => sum + (parseInt(row.Filled) || 0), 0),
-    outputRows: processedData.barcodeData.length + processedData.skuData.length
-  };
+  const stats = useMemo(() => {
+    
+    let uniqueProducts: number;
+    let totalQuantity: number;
+    
+    if (isDocumentFormat) {
+      uniqueProducts = new Set(data.map(row => row['Item No.'])).size;
+      totalQuantity = data.reduce((sum, row) => sum + (parseInt(row.Quantity) || 0), 0);
+    } else {
+      uniqueProducts = new Set(data.map(row => row.SKU)).size;
+      totalQuantity = data.reduce((sum, row) => sum + (parseInt(row.Filled) || 0), 0);
+    }
+    
+    const outputRows = isDocumentFormat 
+      ? processedData.barcodeData.length  // Document format: only barcode data matters
+      : processedData.barcodeData.length + processedData.skuData.length;
+    
+    return {
+      totalRows: data.length,
+      uniqueProducts,
+      totalQuantity,
+      outputRows
+    };
+  }, [data, processedData, isDocumentFormat]);
 
   return (
     <div className="space-y-6">
@@ -82,8 +123,8 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
               <p className="text-sm text-muted-foreground">Unique Products</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">{stats.totalFilled}</p>
-              <p className="text-sm text-muted-foreground">Total Filled Quantity</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.totalQuantity}</p>
+              <p className="text-sm text-muted-foreground">Total Quantity</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-orange-600">{stats.outputRows}</p>
@@ -106,33 +147,67 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Barcode</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Ordered</TableHead>
-                  <TableHead className="text-right">Filled</TableHead>
-                  <TableHead>Price</TableHead>
+                  {isDocumentFormat ? (
+                    <>
+                      <TableHead>Document No.</TableHead>
+                      <TableHead>Document Date</TableHead>
+                      <TableHead>Item No. (Barcode)</TableHead>
+                      <TableHead>Vendor Item No.</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                    </>
+                  ) : (
+                    <>
+                      <TableHead>Category</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Barcode</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="text-right">Ordered</TableHead>
+                      <TableHead className="text-right">Filled</TableHead>
+                      <TableHead>Price</TableHead>
+                    </>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.slice(0, 20).map((row, index) => (
                   <TableRow key={index}>
-                    <TableCell>
-                      <Badge variant="outline">{row.Category}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{row.SKU}</TableCell>
-                    <TableCell className="font-mono text-sm">{row.Barcode}</TableCell>
-                    <TableCell className="max-w-48 truncate" title={row.Name}>
-                      {row.Name}
-                    </TableCell>
-                    <TableCell className="text-right">{row.Ordered}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={parseInt(row.Filled) > 0 ? "default" : "secondary"}>
-                        {row.Filled}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{row.Price}</TableCell>
+                    {isDocumentFormat ? (
+                      <>
+                        <TableCell className="font-mono text-sm">{row['Document No.']}</TableCell>
+                        <TableCell>{row['Document Date']}</TableCell>
+                        <TableCell className="font-mono text-sm">{row['Item No.']}</TableCell>
+                        <TableCell className="font-mono text-sm">{row['Vendor Item No.']}</TableCell>
+                        <TableCell className="max-w-48 truncate" title={row.Product}>
+                          {row.Product}
+                        </TableCell>
+                        <TableCell className="text-right">{row['Unit Price']}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={parseInt(row.Quantity) > 0 ? "default" : "secondary"}>
+                            {row.Quantity}
+                          </Badge>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell>
+                          <Badge variant="outline">{row.Category}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{row.SKU}</TableCell>
+                        <TableCell className="font-mono text-sm">{row.Barcode}</TableCell>
+                        <TableCell className="max-w-48 truncate" title={row.Name}>
+                          {row.Name}
+                        </TableCell>
+                        <TableCell className="text-right">{row.Ordered}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={parseInt(row.Filled) > 0 ? "default" : "secondary"}>
+                            {row.Filled}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{row.Price}</TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -190,29 +265,47 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-48 w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Local SKU (Required)</TableHead>
-                    <TableHead className="text-right">Quantity (Required)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {processedData.skuData.slice(0, 10).map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-mono text-sm">{item.sku}</TableCell>
-                      <TableCell className="text-right">
-                        <Badge>{item.count}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-            <p className="text-center text-sm text-muted-foreground mt-2">
-              Showing first 10 rows, total {processedData.skuData.length} rows
-            </p>
+            {isDocumentFormat ? (
+              <div className="text-center py-8">
+                <div className="mb-4">
+                  <Badge variant="outline" className="text-sm">Document Format</Badge>
+                </div>
+                <p className="text-muted-foreground mb-2">
+                  SKU data will be generated after processing
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  The system will query barcode to find corresponding SKUs from the database.
+                  <br />
+                  Only items with valid SKUs will appear in the final Banma file.
+                </p>
+              </div>
+            ) : (
+              <>
+                <ScrollArea className="h-48 w-full">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>本地SKU(必填)</TableHead>
+                        <TableHead className="text-right">数量(必填)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {processedData.skuData.slice(0, 10).map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono text-sm">{item.sku}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge>{item.count}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+                <p className="text-center text-sm text-muted-foreground mt-2">
+                  Showing first 10 rows, total {processedData.skuData.length} rows
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

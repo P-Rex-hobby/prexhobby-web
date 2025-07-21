@@ -43,6 +43,6 @@ instance.interceptors.response.use(
   },
 )
 
-export default function request(config: RequestConfig) {
+export default function request<T = any>(config: RequestConfig): Promise<T> {
   return instance(config)
 }

@@ -84,8 +84,13 @@ export default function CSVProcessorPage() {
       toast.error("Please upload a CSV file first");
       return;
     }
-    // File upload will be handled in CSVUploader component
-  }, [csvData]);
+    if (!currentFile) {
+      toast.error("No file selected");
+      return;
+    }
+    // Trigger file upload
+    uploadMutation.mutate(currentFile);
+  }, [csvData, currentFile, uploadMutation]);
 
   const handleDownload = useCallback((url: string, filename: string) => {
     triggerDownload(url, filename);

@@ -21,7 +21,7 @@ export const uploadCSV = async (file: File): Promise<CSVUploadResponse> => {
   const formData = new FormData();
   formData.append("file", file);
 
-  return request({
+  return request<CSVUploadResponse>({
     url: "/api/csv/upload",
     method: "POST",
     data: formData,
@@ -33,7 +33,7 @@ export const uploadCSV = async (file: File): Promise<CSVUploadResponse> => {
 
 // 查询处理状态
 export const getCSVStatus = async (taskId: string): Promise<CSVProcessResult> => {
-  return request({
+  return request<CSVProcessResult>({
     url: `/api/csv/status/${taskId}`,
     method: "GET",
   });
