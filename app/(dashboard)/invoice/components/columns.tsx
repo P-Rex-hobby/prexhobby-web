@@ -19,7 +19,7 @@ export const columns: TColumn<OrderItem, unknown>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <Link target="_blank" href={`https://www.plamod.com/management#products?s=${row.original.sku}`} className="underline underline-offset-4">
+        <Link target="_blank" href={`https://plamod.com/retailer/search?q=${row.original.barcode}`} className="underline underline-offset-4">
           {row.original.productName}
         </Link>
       )

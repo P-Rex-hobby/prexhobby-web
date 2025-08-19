@@ -124,7 +124,7 @@ export const columns: TColumn<OrderItem,unknown>[] = [
               return(
                 <div key={item.sku} className={'flex items-center gap-2'}>
                   <p className={className}>
-                    <Link href={`https://www.plamod.com/management#products?s=${item.sku}`} target="_blank">{item.sku}x{item.quantity}</Link>
+                    <Link href={`https://www.plamod.com/retailer/search?q=${item.barcode}`} target="_blank">{item.sku}x{item.quantity}</Link>
                   </p>
                 </div>
               )

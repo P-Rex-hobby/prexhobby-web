@@ -136,7 +136,7 @@ export const columns: TColumn<OrderItem, unknown>[] = [
             if (needCount > cartCount) {
               className += " bg-yellow-300";
             }
-            let url = `https://www.plamod.com/management#products?s=${item.sku}`;
+            let url = `https://www.plamod.com/retailer/search?q=${item.barcode}`;
             //如果sku是一个uuid
             if (item.sku?.length == 36) {
               url = `https://www.universaldist.com/item/detail/${item.sku}`;

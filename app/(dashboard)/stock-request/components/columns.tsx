@@ -52,7 +52,7 @@ export default function columns(onButtonClick: (key: string) => void) {
         return (
           <Link
             target="_blank"
-            href={`https://www.plamod.com/management#products?s=${row.original.sku}`}
+            href={`https://www.plamod.com/retailer/search?q=${row.original.barcode}`}
             className="underline underline-offset-4"
           >
             {row.original.productName}
