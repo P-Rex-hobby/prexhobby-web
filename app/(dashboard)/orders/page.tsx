@@ -26,7 +26,13 @@ export default function Orders() {
   const { data, isLoading, refetch } = useQuery<any>({
     queryKey: ["orders", variables],
     queryFn: () => orders(variables),
-    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    refetchInterval: false,
+    // 数据永远新鲜，不触发背景刷新
+    staleTime: Infinity,
   });
   const handleAddToCart = () => {
     const selection = tableRef.current?.rowSelection() || {};
