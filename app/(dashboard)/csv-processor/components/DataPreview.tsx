@@ -27,6 +27,12 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
   const isDocumentFormat = useMemo(() => {
     return data.length > 0 && 'Document No.' in data[0];
   }, [data]);
+
+  const isOrderFormat = useMemo(() => {
+    if (data.length === 0) return false;
+    const row = data[0] as Record<string, unknown>;
+    return 'Order ID' in row || 'Product Name' in row;
+  }, [data]);
   // Process data deduplication and summation
   const processedData = useMemo(() => {
     const barcodeMap = new Map<string, number>();
@@ -34,6 +40,7 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
     
     // Use the format detection from parent component
     const isDocumentFormatInner = data.length > 0 && 'Document No.' in data[0];
+    const isOrderFormatInner = data.length > 0 && ('Order ID' in data[0] || 'Product Name' in data[0]);
     
     data.forEach((row) => {
       let barcode: string;
@@ -45,6 +52,10 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
         barcode = row['Item No.']?.toString();
         sku = ''; // Document format doesn't have SKU, will be resolved by backend
         quantity = parseInt(row.Quantity) || 0;
+      } else if (isOrderFormatInner) {
+        barcode = row['Barcode']?.toString() || row['Variant Barcode [ID]']?.toString();
+        sku = row['SKU']?.toString();
+        quantity = parseInt(row['Qty Filled']) || parseInt(row['Quantity']) || 0;
       } else {
         // Traditional CSV format
         barcode = row.Barcode?.toString();
@@ -85,6 +96,9 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
     if (isDocumentFormat) {
       uniqueProducts = new Set(data.map(row => row['Item No.'])).size;
       totalQuantity = data.reduce((sum, row) => sum + (parseInt(row.Quantity) || 0), 0);
+    } else if (isOrderFormat) {
+      uniqueProducts = new Set(data.map(row => row.SKU || row['Barcode'])).size;
+      totalQuantity = data.reduce((sum, row) => sum + (parseInt(row['Qty Filled']) || parseInt(row['Quantity']) || 0), 0);
     } else {
       uniqueProducts = new Set(data.map(row => row.SKU)).size;
       totalQuantity = data.reduce((sum, row) => sum + (parseInt(row.Filled) || 0), 0);
@@ -100,7 +114,7 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
       totalQuantity,
       outputRows
     };
-  }, [data, processedData, isDocumentFormat]);
+  }, [data, processedData, isDocumentFormat, isOrderFormat]);
 
   return (
     <div className="space-y-6">
@@ -157,6 +171,17 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
                       <TableHead className="text-right">Unit Price</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                     </>
+                  ) : isOrderFormat ? (
+                    <>
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Barcode</TableHead>
+                      <TableHead>Product Name</TableHead>
+                      <TableHead className="text-right">Qty Ordered</TableHead>
+                      <TableHead className="text-right">Qty Filled</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead>Order Type</TableHead>
+                    </>
                   ) : (
                     <>
                       <TableHead>Category</TableHead>
@@ -188,6 +213,23 @@ export default function DataPreview({ data, onStartProcess, onUpload }: DataPrev
                             {row.Quantity}
                           </Badge>
                         </TableCell>
+                      </>
+                    ) : isOrderFormat ? (
+                      <>
+                        <TableCell className="font-mono text-sm">{row['Order ID']}</TableCell>
+                        <TableCell className="font-mono text-sm">{row['SKU']}</TableCell>
+                        <TableCell className="font-mono text-sm">{row['Barcode']}</TableCell>
+                        <TableCell className="max-w-48 truncate" title={row['Product Name']}>
+                          {row['Product Name']}
+                        </TableCell>
+                        <TableCell className="text-right">{row['Qty Ordered']}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={parseInt(row['Qty Filled']) > 0 ? "default" : "secondary"}>
+                            {row['Qty Filled']}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{row['Unit Price']}</TableCell>
+                        <TableCell>{row['Order Type']}</TableCell>
                       </>
                     ) : (
                       <>

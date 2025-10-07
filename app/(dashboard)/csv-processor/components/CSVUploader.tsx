@@ -33,26 +33,36 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
         
         // Validate required columns for different file formats
         if (jsonData.length > 0) {
-          const firstRow = jsonData[0] as any;
+          const firstRow = jsonData[0] as Record<string, unknown>;
           const columns = Object.keys(firstRow);
-          
-          // Check if it's Document format (contains "Document No.")
-          const isDocumentFormat = columns.includes("Document No.");
-          
-          let requiredColumns: string[];
+          const normalizedColumns = columns.map((col) => col?.toString().trim());
+
+          const hasColumn = (target: string) =>
+            normalizedColumns.some((col) => col && col.toLowerCase() === target.toLowerCase());
+
+          const hasPartialColumn = (target: string) =>
+            normalizedColumns.some((col) => col && col.toLowerCase().startsWith(target.toLowerCase()));
+
+          const isDocumentFormat = hasColumn("Document No.");
+          const isOrderFormat = hasColumn("Order ID") && (hasColumn("Qty Filled") || hasPartialColumn("qty filled"));
+
+          let requiredColumns: string[] = [];
+          let formatLabel = "CSV format";
+
           if (isDocumentFormat) {
-            // Document format columns
             requiredColumns = ["Document No.", "Document Date", "Item No.", "Vendor Item No.", "Product", "Unit Price", "Quantity"];
+            formatLabel = "Document format";
+          } else if (isOrderFormat) {
+            requiredColumns = ["Order ID", "SKU", "Barcode", "Product Name", "Qty Ordered", "Qty Filled"];
+            formatLabel = "Order CSV format";
           } else {
-            // Traditional CSV format columns  
             requiredColumns = ["Category", "SKU", "Barcode", "Name", "Ordered", "Filled", "Price", "Tariff", "Subtotal"];
           }
-          
-          const missingColumns = requiredColumns.filter(col => !(col in firstRow));
-          
+
+          const missingColumns = requiredColumns.filter((col) => !(hasColumn(col) || hasPartialColumn(col)));
+
           if (missingColumns.length > 0) {
-            const formatType = isDocumentFormat ? "Document format" : "CSV format";
-            setParseError(`Missing required columns for ${formatType}: ${missingColumns.join(", ")}`);
+            setParseError(`Missing required columns for ${formatLabel}: ${missingColumns.join(", ")}`);
             return;
           }
         }
