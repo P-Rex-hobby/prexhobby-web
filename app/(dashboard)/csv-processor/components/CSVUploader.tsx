@@ -43,6 +43,12 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
           const hasPartialColumn = (target: string) =>
             normalizedColumns.some((col) => col && col.toLowerCase().startsWith(target.toLowerCase()));
 
+          if (hasColumn("收件人邮箱")) {
+            setParseError(null);
+            onFileSelect(file, [], { skipPreview: true });
+            return;
+          }
+
           const isDocumentFormat = hasColumn("Document No.");
           const isOrderFormat = hasColumn("Order ID") && (hasColumn("Qty Filled") || hasPartialColumn("qty filled"));
 
@@ -92,14 +98,8 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
 
     setFile(selectedFile);
 
-    if (selectedFile.name.toLowerCase() === "data.xlsx") {
-      setParseError(null);
-      onFileSelect(selectedFile, [], { skipPreview: true });
-      return;
-    }
-
     parseCSVFile(selectedFile);
-  }, [onFileSelect, parseCSVFile]);
+  }, [parseCSVFile]);
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
