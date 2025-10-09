@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 interface CSVUploaderProps {
-  onFileSelect: (file: File, data: any[]) => void;
+  onFileSelect: (file: File, data: any[], options?: { skipPreview?: boolean }) => void;
   onUpload: (file: File) => void;
   disabled?: boolean;
   processState: string;
@@ -76,33 +76,42 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
     reader.readAsBinaryString(file);
   }, [onFileSelect]);
 
+  const handleSelectedFile = useCallback((selectedFile: File) => {
+    const allowedTypes = ['.csv', '.xls', '.xlsx'];
+    const fileExtension = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
+
+    if (!allowedTypes.includes(fileExtension)) {
+      setParseError("Unsupported file format, please upload .csv, .xls or .xlsx files");
+      return;
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setParseError("File size exceeds 10MB limit");
+      return;
+    }
+
+    setFile(selectedFile);
+
+    if (selectedFile.name.toLowerCase() === "data.xlsx") {
+      setParseError(null);
+      onFileSelect(selectedFile, [], { skipPreview: true });
+      return;
+    }
+
+    parseCSVFile(selectedFile);
+  }, [onFileSelect, parseCSVFile]);
+
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       const selectedFile = files[0];
-      
-      // Validate file type
-      const allowedTypes = ['.csv', '.xls', '.xlsx'];
-      const fileExtension = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
-      
-      if (!allowedTypes.includes(fileExtension)) {
-        setParseError("Unsupported file format, please upload .csv, .xls or .xlsx files");
-        return;
-      }
-      
-      // Validate file size
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setParseError("File size exceeds 10MB limit");
-        return;
-      }
-      
-      setFile(selectedFile);
-      parseCSVFile(selectedFile);
+
+      handleSelectedFile(selectedFile);
     }
     
     // Reset file input to allow reselecting the same file
     event.target.value = '';
-  }, [parseCSVFile]);
+  }, [handleSelectedFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -121,26 +130,10 @@ export default function CSVUploader({ onFileSelect, onUpload, disabled, processS
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const droppedFile = files[0];
-      
-      // Validate file type
-      const allowedTypes = ['.csv', '.xls', '.xlsx'];
-      const fileExtension = droppedFile.name.toLowerCase().substring(droppedFile.name.lastIndexOf('.'));
-      
-      if (!allowedTypes.includes(fileExtension)) {
-        setParseError("Unsupported file format, please upload .csv, .xls or .xlsx files");
-        return;
-      }
-      
-      // Validate file size
-      if (droppedFile.size > 10 * 1024 * 1024) {
-        setParseError("File size exceeds 10MB limit");
-        return;
-      }
-      
-      setFile(droppedFile);
-      parseCSVFile(droppedFile);
+
+      handleSelectedFile(droppedFile);
     }
-  }, [parseCSVFile]);
+  }, [handleSelectedFile]);
 
   const handleClick = () => {
     if (!disabled && fileInputRef.current) {

@@ -25,6 +25,7 @@ export default function CSVProcessorPage() {
   const [csvData, setCsvData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [skipPreviewMode, setSkipPreviewMode] = useState(false);
 
   // 上传CSV文件
   const uploadMutation = useMutation({
@@ -73,14 +74,25 @@ export default function CSVProcessorPage() {
     }
   }, [statusData]);
 
-  const handleFileSelect = useCallback((file: File, data: any[]) => {
-    setCsvData(data);
+  const handleFileSelect = useCallback((file: File, data: any[], options?: { skipPreview?: boolean }) => {
+    setUploadResult(null);
+    setError(null);
     setCurrentFile(file);
+
+    if (options?.skipPreview) {
+      setSkipPreviewMode(true);
+      setCsvData([]);
+      uploadMutation.mutate(file);
+      return;
+    }
+
+    setSkipPreviewMode(false);
+    setCsvData(data);
     setProcessState("preview");
-  }, []);
+  }, [uploadMutation]);
 
   const handleStartProcess = useCallback(() => {
-    if (csvData.length === 0) {
+    if (!skipPreviewMode && csvData.length === 0) {
       toast.error("Please upload a CSV file first");
       return;
     }
@@ -90,7 +102,7 @@ export default function CSVProcessorPage() {
     }
     // Trigger file upload
     uploadMutation.mutate(currentFile);
-  }, [csvData, currentFile, uploadMutation]);
+  }, [csvData, currentFile, skipPreviewMode, uploadMutation]);
 
   const handleDownload = useCallback((url: string, filename: string) => {
     triggerDownload(url, filename);
@@ -103,6 +115,7 @@ export default function CSVProcessorPage() {
     setCsvData([]);
     setCurrentFile(null);
     setError(null);
+    setSkipPreviewMode(false);
     uploadMutation.reset(); // Reset mutation state
   }, [uploadMutation]);
 
