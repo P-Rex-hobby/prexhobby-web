@@ -10,6 +10,7 @@ export type SubscribeItem = {
   id: string;
   product: {
     id: string;
+    preorderInventory: number | null;
     sku: string;
     barcode: string;
     title: string;
