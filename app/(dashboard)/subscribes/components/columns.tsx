@@ -130,4 +130,22 @@ export const columns: TColumn<SubscribeItem, unknown>[] = [
     },
     enableSorting: true,
   },
+  {
+    id: "preorderInventory",
+    accessorKey: "product.preorderInventory",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Preorder Inventory" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="text-center">
+          <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-semibold">
+            {row.original.product.preorderInventory || 0}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: true,
+  },
+  
 ]; 
