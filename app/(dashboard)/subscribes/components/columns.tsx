@@ -5,12 +5,17 @@ import { DataTableColumnHeader } from "@/components/biz/data-table/data-table-co
 import { TColumn } from "@/components/biz/data-table";
 import { format, differenceInDays } from "date-fns";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { inboundPreorderInventory } from "@/apis/subscribe";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 export type SubscribeItem = {
   id: string;
   product: {
     id: string;
     preorderInventory: number | null;
+    preorderInventoryInboundQty?: number | null;
     sku: string;
     barcode: string;
     title: string;
@@ -22,6 +27,38 @@ export type SubscribeItem = {
   };
   count: number;
 };
+
+function InboundButton({ productId, delta }: { productId: string; delta: number }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const mutation = useMutation({
+    mutationFn: () => inboundPreorderInventory(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscribes"] });
+      toast({
+        title: "入库成功",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        variant: "destructive",
+        title: "入库失败",
+        description: err?.message || "请求失败",
+      });
+    },
+  });
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={delta <= 0 || mutation.isPending}
+      onClick={() => mutation.mutate()}
+    >
+      {mutation.isPending ? "入库中..." : "入库"}
+    </Button>
+  );
+}
 
 export const columns: TColumn<SubscribeItem, unknown>[] = [
   {
@@ -37,7 +74,7 @@ export const columns: TColumn<SubscribeItem, unknown>[] = [
         </div>
       );
     },
-    enableSorting: true,
+    enableSorting: false,
   },
   {
     id: "title",
@@ -147,6 +184,39 @@ export const columns: TColumn<SubscribeItem, unknown>[] = [
       );
     },
     enableSorting: true,
+  },
+  {
+    id: "preorderInventoryInboundQty",
+    accessorKey: "product.preorderInventoryInboundQty",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="已入库" />
+    ),
+    cell: ({ row }) => {
+      const qty = row.original.product.preorderInventoryInboundQty || 0;
+      return (
+        <div className="text-center">
+          <span className="inline-flex items-center justify-center w-8 h-8 bg-green-100 text-green-800 rounded-full font-semibold">
+            {qty}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: false,
+  },
+  {
+    id: "actions",
+    header: () => <div className="text-right">操作</div>,
+    cell: ({ row }) => {
+      const preorderInventory = row.original.product.preorderInventory || 0;
+      const inboundQty = row.original.product.preorderInventoryInboundQty || 0;
+      const delta = Math.max(0, preorderInventory - inboundQty);
+      return (
+        <div className="flex justify-end gap-2">
+          <InboundButton productId={row.original.product.id} delta={delta} />
+        </div>
+      );
+    },
+    enableSorting: false,
   },
   
 ]; 

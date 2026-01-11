@@ -222,7 +222,7 @@ const DataTable = <TData extends { id: string }, TValue>(
       const sort = newSortingValue
         .map((s) => `${s.id}_${s.desc ? "desc" : "asc"}`)
         .join(",");
-      navigate({ sort });
+      navigate({ sort, page: 1 });
     },
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,

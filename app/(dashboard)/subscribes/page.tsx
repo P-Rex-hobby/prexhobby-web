@@ -58,6 +58,7 @@ function SubscribeTableWrapper() {
 
   return (
     <DataTable<SubscribeItem, unknown>
+      key={`${pathname}?${searchParams.toString()}`}
       ref={tableRef}
       queryKey="subscribes"
       columns={columns}
