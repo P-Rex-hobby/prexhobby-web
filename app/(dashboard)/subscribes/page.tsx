@@ -35,9 +35,10 @@ function SubscribeTableWrapper() {
       };
       
       const response = await subscribes(requestParams);
+      const data = response?.data ?? response;
       
       // 处理数据格式，将原始数据转换为DataTable期望的格式
-      const processedData = (response?.data?.content || []).map((item: any) => ({
+      const processedData = (data?.content || []).map((item: any) => ({
         id: item.product.id,
         product: item.product,
         count: item.count,
@@ -45,12 +46,12 @@ function SubscribeTableWrapper() {
 
       return {
         subscribes: processedData,
-        total: [{ count: response?.data?.totalElements || 0 }],
+        total: [{ count: data?.totalElements || 0 }],
         // 返回实际的分页信息
         pagination: {
-          current: response?.data?.current || 1,
-          size: response?.data?.size || 50,
-          totalPages: response?.data?.totalPages || 0,
+          current: data?.current || 1,
+          size: data?.size || 50,
+          totalPages: data?.totalPages || 0,
         },
       };
     },
