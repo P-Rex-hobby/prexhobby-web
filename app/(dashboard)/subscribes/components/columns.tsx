@@ -16,6 +16,7 @@ export type SubscribeItem = {
     id: string;
     preorderInventory: number | null;
     preorderInventoryInboundQty?: number | null;
+    preorderInventoryRealQty?: number | null;
     sku: string;
     barcode: string;
     title: string;
@@ -172,13 +173,30 @@ export const columns: TColumn<SubscribeItem, unknown>[] = [
     id: "preorderInventory",
     accessorKey: "product.preorderInventory",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Preorder Inventory" />
+      <DataTableColumnHeader column={column} title="Placed Inventory" />
     ),
     cell: ({ row }) => {
       return (
         <div className="text-center">
           <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-semibold">
             {row.original.product.preorderInventory || 0}
+          </span>
+        </div>
+      );
+    },
+    enableSorting: true,
+  },
+  {
+    id: "preorderInventoryRealQty",
+    accessorKey: "product.preorderInventoryRealQty",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Allocated Inventory" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="text-center">
+          <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full font-semibold">
+            {row.original.product.preorderInventoryRealQty || 0}
           </span>
         </div>
       );
@@ -207,9 +225,9 @@ export const columns: TColumn<SubscribeItem, unknown>[] = [
     id: "actions",
     header: () => <div className="text-right">操作</div>,
     cell: ({ row }) => {
-      const preorderInventory = row.original.product.preorderInventory || 0;
+      const preorderInventoryRealQty = row.original.product.preorderInventoryRealQty || 0;
       const inboundQty = row.original.product.preorderInventoryInboundQty || 0;
-      const delta = Math.max(0, preorderInventory - inboundQty);
+      const delta = Math.max(0, preorderInventoryRealQty - inboundQty);
       return (
         <div className="flex justify-end gap-2">
           <InboundButton productId={row.original.product.id} delta={delta} />
