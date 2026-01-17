@@ -9,6 +9,35 @@ import { Button } from "@/components/ui/button";
 import { inboundPreorderInventory } from "@/apis/subscribe";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
+import type { AxiosError } from "axios";
+
+type PreorderInboundResponse = {
+  productId: string;
+  sku: string;
+  targetPreorderInventory: number;
+  inboundAlreadyQty: number;
+  inboundDeltaQty: number;
+  inboundAfterQty: number;
+};
+
+function normalizePreorderInboundResponse(input: any): PreorderInboundResponse {
+  const res = input?.data ?? input ?? {};
+  return {
+    productId: res.productId ?? res.ProductID ?? res.product_id ?? "",
+    sku: res.sku ?? res.SKU ?? "",
+    targetPreorderInventory:
+      res.targetPreorderInventory ??
+      res.TargetPreorderInventory ??
+      res.target_preorder_inventory ??
+      0,
+    inboundAlreadyQty:
+      res.inboundAlreadyQty ?? res.InboundAlreadyQty ?? res.inbound_already_qty ?? 0,
+    inboundDeltaQty:
+      res.inboundDeltaQty ?? res.InboundDeltaQty ?? res.inbound_delta_qty ?? 0,
+    inboundAfterQty:
+      res.inboundAfterQty ?? res.InboundAfterQty ?? res.inbound_after_qty ?? 0,
+  };
+}
 
 export type SubscribeItem = {
   id: string;
@@ -33,18 +62,47 @@ function InboundButton({ productId, delta }: { productId: string; delta: number 
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const mutation = useMutation({
-    mutationFn: () => inboundPreorderInventory(productId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscribes"] });
+    mutationFn: async () => {
+      const raw = await inboundPreorderInventory(productId);
+      return normalizePreorderInboundResponse(raw);
+    },
+    onSuccess: (res) => {
+      // Optimistic update for the current table data so UI reflects immediately,
+      // even if refetch is delayed.
+      queryClient.setQueriesData({ queryKey: ["subscribes"] }, (old: any) => {
+        if (!old || !Array.isArray(old.subscribes)) return old;
+        const next = {
+          ...old,
+          subscribes: old.subscribes.map((item: SubscribeItem) => {
+            if (item?.product?.id !== productId) return item;
+            return {
+              ...item,
+              product: {
+                ...item.product,
+                preorderInventoryInboundQty: res?.inboundAfterQty ?? item.product.preorderInventoryInboundQty,
+              },
+            };
+          }),
+        };
+        return next;
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["subscribes"], refetchType: "active" });
       toast({
         title: "入库成功",
+        description: `本次入库 ${res?.inboundDeltaQty ?? 0}，已入库 ${res?.inboundAfterQty ?? 0}`,
       });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
+      const axiosErr = err as AxiosError<any>;
+      const serverMsg =
+        axiosErr?.response?.data?.error ||
+        axiosErr?.response?.data?.message ||
+        axiosErr?.message;
       toast({
         variant: "destructive",
         title: "入库失败",
-        description: err?.message || "请求失败",
+        description: serverMsg || "请求失败",
       });
     },
   });
@@ -70,9 +128,13 @@ export const columns: TColumn<SubscribeItem, unknown>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <div className="font-medium">
-          {row.original.product.sku}
-        </div>
+        <Link 
+        target="_blank" 
+        href={`https://ca.universaldist.com/item/detail/${row.original.product.sku}`} 
+        className="underline underline-offset-4 truncate hover:text-blue-600"
+      >
+        {row.original.product.sku}
+      </Link>
       );
     },
     enableSorting: false,
