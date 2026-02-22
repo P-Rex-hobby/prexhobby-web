@@ -4,24 +4,98 @@ import { SubscribeItem, columns } from "./components/columns";
 import { subscribes } from "@/apis/subscribe";
 import Page from "@/components/biz/page";
 import CustomCard from "@/components/biz/custom-card";
-import { Suspense, useRef, useEffect } from "react";
+import { Suspense, useRef, useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 function SubscribeTableWrapper() {
   const tableRef = useRef<TableRef>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const [barcode, setBarcode] = useState("");
+  const [tableLoading, setTableLoading] = useState(false);
 
   // 初始化默认分页参数
   useEffect(() => {
-    const currentSize = searchParams.get('size');
+    const currentSize = searchParams.get("size");
     if (!currentSize) {
       const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.set('size', '50');
+      newSearchParams.set("size", "50");
       router.replace(`${pathname}?${newSearchParams.toString()}`);
     }
-  }, []);
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    setBarcode(searchParams.get("barcode") || "");
+  }, [searchParams]);
+
+  const replaceSearchParams = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+    });
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
+
+  const toolbar = (
+    <div className="flex items-center gap-2">
+      <Input
+        className="h-8 w-[220px]"
+        placeholder="Barcode"
+        value={barcode}
+        disabled={tableLoading}
+        onChange={(e) => setBarcode(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const nextBarcode = barcode.trim();
+            replaceSearchParams({
+              barcode: nextBarcode || undefined,
+              page: "1",
+            });
+          }
+        }}
+      />
+      <Button
+        type="button"
+        size="sm"
+        loading={tableLoading}
+        onClick={() => {
+          const nextBarcode = barcode.trim();
+          replaceSearchParams({
+            barcode: nextBarcode || undefined,
+            page: "1",
+          });
+        }}
+      >
+        Search
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={tableLoading}
+        onClick={() => {
+          setBarcode("");
+          replaceSearchParams({
+            barcode: undefined,
+            page: "1",
+          });
+        }}
+      >
+        Clear
+      </Button>
+      {tableLoading && (
+        <span className="text-xs text-muted-foreground">Loading data...</span>
+      )}
+    </div>
+  );
 
   const actions = {
     fetch: async (params: any) => {
@@ -64,7 +138,9 @@ function SubscribeTableWrapper() {
       queryKey="subscribes"
       columns={columns}
       pagination={true}
+      toolbar={toolbar}
       actions={actions}
+      onLoadingChange={setTableLoading}
     />
   );
 }
